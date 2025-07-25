@@ -20,7 +20,7 @@ from muxserve.constants import (SM_HOLD_NAME_FMT, ADD_REQ_NAME_FMT,
                               RET_REQ_NAME_FMT, PREEMPT_REQ_NAME_FMT)
 from muxserve.flexserver.pipeworker import PipeWorker
 from muxserve.muxsched.launcher import launch_flexserver_process
-from muxserve.muxsched.resource import SMResource, SMPart
+from muxserve.muxsched.mux_resource import SMResource, SMPart
 from muxserve.muxsched.workload_utils import get_workload, Workload, Request
 from muxserve.shm_utils import (create_shared_var, read_shared_var,
                               write_shared_var, dump_to_shared_var,
@@ -262,7 +262,7 @@ class MuxScheduler:
 
         # get rate for each model
         self.model_rates = {}
-        for (model_name, rate) in self.workload.workload_infos["rates"]:
+        for (model_name, rate,_) in self.workload.workload_infos["rates"]:
             if model_name in self._served_models:
                 self.model_rates[model_name] = rate
 
@@ -684,6 +684,7 @@ class MuxScheduler:
         return True
 
     def schedule_prefill(self, model):
+        # print(f"schedule_prefill: model = {model}, requests = {len(self.waiting[model])}")
         waiting_queue = self.waiting[model]
         waiting_queue.sort()
 
@@ -708,6 +709,7 @@ class MuxScheduler:
         return scheduled
 
     def schedule_decode(self, model):
+        # print(f"schedule_decode: model = {model}, requests = {len(self.running[model])}")
         max_micro_num_seqs = self.max_num_seqs[
             model] // self.pipeline_parallel_size
         running_queue = self.running[model]
@@ -726,6 +728,9 @@ class MuxScheduler:
 
         sm_hold_name = SM_HOLD_NAME_FMT.format(model, num_sm * 10)
         if sm_hold_name in self.running_mps:
+            # running_reqs = [req.idx for req in self.running[model]]
+            # executing_reqs = list(self.executing[model])
+            # print(f"[RUNNING] {model} running: {running_reqs}, executing: {executing_reqs}")
             status = SchedStatus.RUNNING
             return status
 
@@ -762,6 +767,9 @@ class MuxScheduler:
 
         sm_hold_name = SM_HOLD_NAME_FMT.format(model, num_sm * 10)
         if sm_hold_name in self.running_mps:
+            # running_reqs = [req.idx for req in self.running[model]]
+            # executing_reqs = list(self.executing[model])
+            # print(f"[RUNNING] {model} running: {running_reqs}, executing: {executing_reqs}")
             status = SchedStatus.RUNNING
             return status
 
@@ -913,7 +921,7 @@ class MuxScheduler:
         for i in range(len(self._served_models)):
             model = self.switch_prefill_model()
             status = await self.try_schedule_prefill(model)
-            if status is None:
+            if status is None or len(self._served_models) == 1:
                 last_sched_time = self.get_tick()
                 scheduled_model_id = self._running_prefill_model_id
                 prefill_in_exec = True
@@ -940,7 +948,7 @@ class MuxScheduler:
         for i in range(len(self._served_models)):
             model = self.switch_decoding_model()
             status = await self.try_schedule_decoding(model)
-            if status is None:
+            if status is None or len(self._served_models) == 1:
                 last_sched_time = self.get_tick()
                 scheduled_model_id = self._running_decoding_model_id
             else:
@@ -963,8 +971,8 @@ class MuxScheduler:
             logger.info(f"Fail to schedule {tag} requests due to "
                         f"{status} for {model}: "
                         f"waiting {len(self.waiting[model])} "
-                        f"running {len(self.running[model])} "
-                        f"executing {len(self.executing[model])} ")
+                        f"running {len(self.running[model])} {self.running[model]} "
+                        f"executing {len(self.executing[model])} {self.executing[model]}")
             return True
         return False
 
@@ -1114,10 +1122,10 @@ class MuxScheduler:
                                    last_sched_time, last_warn_time)
             status, prefill_in_exec, last_sched_time, last_warn_time = ret
 
-            if self.get_tick() - last_sched_time > 60 * 4:
-                logger.info("Scheduler Timeout Error, Exit!")
-                self.is_finished = True
-                break
+            # if self.get_tick() - last_sched_time > 60 * 4:
+            #     logger.info("Scheduler Timeout Error, Exit!")
+            #     self.is_finished = True
+            #     break
 
             if need_adapt and self.get_tick(
             ) - last_adapt_time > adapt_interval:
@@ -1194,7 +1202,7 @@ class MuxScheduler:
         logger.info("Workload Statistics:")
         if self.workload.workload_infos:
             rates = self.workload.workload_infos.pop("rates")
-            for (model, rate) in rates:
+            for (model, rate,_) in rates:
                 logger.info(f"  Model: {model} rate: {rate}")
             for key, value in self.workload.workload_infos.items():
                 logger.info(f"{key}: {value}")

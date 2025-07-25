@@ -9,13 +9,12 @@ END_TO_END_DIR = os.path.dirname(__file__)
 PROJ_DIR = f"{os.path.dirname(__file__)}/../.."
 
 MODEL_TO_PATH = {
-    "llama-7b": "/mnt/afs/share/LLMCKPTs/huggyllama/llama-7b",
-    "llama-13b": "/mnt/afs/share/LLMCKPTs/huggyllama/llama-13b",
-    "llama-30b": "/mnt/afs/share/LLMCKPTs/huggyllama/llama-30b",
-    "llama-65b": "/mnt/afs/share/LLMCKPTs/huggyllama/llama-65b",
+    "llama-7b": "/users/cm/.cache/modelscope/llama-7b",
+    "llama-13b": "/users/cm/.cache/modelscope/hub/models/ydyajyA/llama-13b",
 }
 # path to `ShareGPT_V3_unfiltered_cleaned_split.json`
-SHAREGPT_PATH = "/mnt/afs/dmhj/datasets/ShareGPT_V3_unfiltered_cleaned_split.json"
+# SHAREGPT_PATH = "/users/cm/AzureLLMInferenceTrace_conv_1week.csv"
+SHAREGPT_PATH = "/users/cm/ShareGPT_V3_unfiltered_cleaned_split.json"
 # this is for caching tokenized ShareGPT_V3 dataset. Specify it to accelerate config generation
 TOKENIZED_DATA_CACHE = "/mnt/afs/dmhj/datasets/ShareGPT_V3_llama_tokenized.cache"
 # statistic cost file
@@ -91,8 +90,7 @@ def get_workload_from_optimized_placement(
         num_req.append(cur_num_req)
         sampled_req.append(
             sample_request_datas(cur_num_req,
-                                 SHAREGPT_PATH,
-                                 tokenized_cache_path=TOKENIZED_DATA_CACHE))
+                                 SHAREGPT_PATH))
     max_num_req = max(num_req)
 
     kwargs.update({
@@ -118,7 +116,7 @@ def get_placement_from_cfg(models_yaml: str,
     return opt.optimize(is_greedy,
                         dump_dir=dump_dir,
                         dump_to_yaml=dump_to_yaml,
-                        verbose=verbose)
+                        verbose=True)
 
 
 def is_cfg_valid(read_dir: str) -> list[str]:
@@ -262,19 +260,17 @@ def assign_rates(real_rates: list[float],
 
 
 def gen_config_with_power_law(config_dir: str, workloads_dir: str):
-    num_models = 19  # 12 x 7B; 4 x 13B; 2 x 30B; 1 x 65B
-    alpha_lis = [0.7, 0.9, 1.3, 1.7, 2.1]
+    num_models = 16  # 12 x 7B; 4 x 13B; 2 x 30B; 1 x 65B
+    alpha_lis = [0.7]
     max_rate_lis = [40]
-    rate_scale_lis = [0.5, 0.75, 1.0, 1.25] # 20, 30, 40, 50
+    rate_scale_lis = [0.5] # 20, 30, 40, 50
     model2num = {
         "llama-7b": 12,
         "llama-13b": 4,
-        "llama-30b": 2,
-        "llama-65b": 1,
     }
     nnodes = 4
     ngpus_per_node = 8
-    tmp_cfg = "/tmp/tmp_model_cfg.yaml"
+    tmp_cfg = "/users/cm/tmp/tmp_model_cfg.yaml"
 
     if not os.path.exists(config_dir):
         os.makedirs(config_dir, exist_ok=True)

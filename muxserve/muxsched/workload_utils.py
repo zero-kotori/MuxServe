@@ -17,10 +17,12 @@ import numpy as np
 import yaml
 import pickle
 import os
+import csv
+from datetime import datetime
 
 DEFAULT_WARMUP = 10
 DEFAULT_DATASET_PATH = "/mnt/afs/dmhj/datasets/ShareGPT_V3_unfiltered_cleaned_split.json"
-DEFAULT_TOKENIZER_PATH = "/mnt/afs/share/LLMCKPTs/huggyllama/llama-7b"
+DEFAULT_TOKENIZER_PATH = "/users/cm/.cache/modelscope/hub/models/LLM-Research/llama-7b"
 eps = 1e-6
 
 
@@ -473,60 +475,77 @@ def sample_requests(
     dataset_path: str,
     seqlen_distribution: Optional[Tuple[int, int]] = None,
     tokenized_cache_path: str = None,
-) -> List[Tuple[list[int], int, int]]:
+) -> List[Tuple[int,list[int], int, int]]:
     '''
-    return: (encoded_prompt, intput_len, output_len)
+    return: (arrivals,encoded_prompt, intput_len, output_len)
     '''
-    if tokenized_cache_path and os.path.exists(tokenized_cache_path):
-        with open(tokenized_cache_path, "rb") as fp:
-            tokenized_dataset: list[tuple[str, list[int],
-                                          int]] = pickle.load(fp)
-    else:
-        # Load the dataset.
-        with open(dataset_path) as f:
-            dataset = json.load(f)
-        # Filter out the conversations with less than 2 turns.
-        dataset = [data for data in dataset if len(data["conversations"]) >= 2]
-        # Only keep the first two turns of each conversation.
-        dataset = [(data["conversations"][0]["value"],
-                    data["conversations"][1]["value"]) for data in dataset]
+    # if tokenized_cache_path and os.path.exists(tokenized_cache_path):
+    #     with open(tokenized_cache_path, "rb") as fp:
+    #         tokenized_dataset: list[tuple[str, list[int],
+    #                                       int]] = pickle.load(fp)
+    # else:
+    #     # Load the dataset.
+    #     with open(dataset_path) as f:
+    #         dataset = json.load(f)
+    #     # Filter out the conversations with less than 2 turns.
+    #     dataset = [data for data in dataset if len(data["conversations"]) >= 2]
+    #     # Only keep the first two turns of each conversation.
+    #     dataset = [(data["conversations"][0]["value"],
+    #                 data["conversations"][1]["value"]) for data in dataset]
 
-        # Tokenize the prompts and completions.
-        prompts: list[str] = [prompt for prompt, _ in dataset]
-        prompt_token_ids: list[list[int]] = tokenizer(prompts).input_ids
-        completions = [completion for _, completion in dataset]
-        completion_token_ids = tokenizer(completions).input_ids
-        tokenized_dataset = []
-        for i in range(len(dataset)):
-            output_len = len(completion_token_ids[i])
-            tokenized_dataset.append(
-                (prompts[i], prompt_token_ids[i], output_len))
-        if tokenized_cache_path:
-            os.makedirs(os.path.dirname(tokenized_cache_path), exist_ok=True)
-            with open(tokenized_cache_path, "wb") as fp:
-                pickle.dump(tokenized_dataset, fp)
+    #     # Tokenize the prompts and completions.
+    #     prompts: list[str] = [prompt for prompt, _ in dataset]
+    #     prompt_token_ids: list[list[int]] = tokenizer(prompts).input_ids
+    #     completions = [completion for _, completion in dataset]
+    #     completion_token_ids = tokenizer(completions).input_ids
+    #     tokenized_dataset = []
+    #     for i in range(len(dataset)):
+    #         output_len = len(completion_token_ids[i])
+    #         tokenized_dataset.append(
+    #             (prompts[i], prompt_token_ids[i], output_len))
+    #     if tokenized_cache_path:
+    #         os.makedirs(os.path.dirname(tokenized_cache_path), exist_ok=True)
+    #         with open(tokenized_cache_path, "wb") as fp:
+    #             pickle.dump(tokenized_dataset, fp)
 
-    min_seq_len = 0
-    max_seq_len = np.inf
-    if seqlen_distribution is not None:
-        min_seq_len, max_seq_len = seqlen_distribution
+    # min_seq_len = 0
+    # max_seq_len = np.inf
+    # if seqlen_distribution is not None:
+    #     min_seq_len, max_seq_len = seqlen_distribution
 
-    # Filter out too long sequences.
-    filtered_dataset: List[Tuple[str, int, int]] = []
-    for prompt, prompt_token_id, output_len in tokenized_dataset:
-        prompt_len = len(prompt_token_id)
-        if prompt_len < 4 or output_len < 4:
-            # Prune too short sequences.
-            # This is because TGI causes errors when the input or output length
-            # is too short.
-            continue
-        if prompt_len > 1024 or prompt_len + output_len > 2048:
-            # Prune too long sequences.
-            continue
-        total_len = prompt_len + output_len
-        if total_len < min_seq_len or total_len > max_seq_len:
-            continue
-        filtered_dataset.append((prompt_token_id, prompt_len, output_len))
+    # # Filter out too long sequences.
+    # filtered_dataset: List[Tuple[str, int, int]] = []
+    # for prompt, prompt_token_id, output_len in tokenized_dataset:
+    #     prompt_len = len(prompt_token_id)
+    #     if prompt_len < 4 or output_len < 4:
+    #         # Prune too short sequences.
+    #         # This is because TGI causes errors when the input or output length
+    #         # is too short.
+    #         continue
+    #     if prompt_len > 1024 or prompt_len + output_len > 2048:
+    #         # Prune too long sequences.
+    #         continue
+    #     total_len = prompt_len + output_len
+    #     if total_len < min_seq_len or total_len > max_seq_len:
+    #         continue
+    #     filtered_dataset.append((prompt_token_id, prompt_len, output_len))
+
+    with open(dataset_path, 'r', newline='') as f:  
+        csv_reader = csv.DictReader(f)  
+        dataset = [row for row in csv_reader]
+
+    filtered_dataset = []
+    base_time=datetime.fromisoformat(dataset[0]["TIMESTAMP"])
+    for req in dataset:
+        arrival=datetime.fromisoformat(req["TIMESTAMP"])-base_time
+        arrival=arrival.total_seconds()
+        inputlen=min(1024,int(req["ContextTokens"]))
+        outputlen=int(req["GeneratedTokens"])
+        prompt=[1 for _ in range(inputlen)]
+        filtered_dataset.append((arrival,prompt,inputlen,outputlen))
+        if(len(filtered_dataset)>5000):
+            break
+
 
     # Sample the requests.
     sampled_requests = random.sample(filtered_dataset, num_requests)
@@ -566,8 +585,8 @@ def sample_request_datas(
     tokenized_cache_path: str = None,
 ):
     # sample requests to fill the workload
-    if tokenizer is None and tokenized_cache_path is None:
-        tokenizer = get_tokenizer(DEFAULT_TOKENIZER_PATH)
+    # if tokenizer is None and tokenized_cache_path is None:
+    #     tokenizer = get_tokenizer(DEFAULT_TOKENIZER_PATH)
     requests = sample_requests(num_requests,
                                tokenizer,
                                dataset_path,
@@ -588,7 +607,7 @@ def get_workload(
     arrival_rates: List[float],
     start: int,
     duration: int,
-    distribution: str = "poisson",
+    distribution: str = "real",
     seed: int = 0,
     dataset_path: str = DEFAULT_DATASET_PATH,
     tokenizer_path: str = DEFAULT_TOKENIZER_PATH,
@@ -604,37 +623,46 @@ def get_workload(
     for i, (model_name, arrival_rate,
             nreq) in enumerate(zip(models, arrival_rates, num_requests)):
         assert arrival_rate >= 0
-        if distribution == "poisson":
-            process = PoissonProcess
-        elif distribution == "uniform":
-            process = DeterministicProcess
-        else:
-            raise ValueError(f"Unknown arrival process: {distribution}")
-        w = process(arrival_rate).generate_workload(model_name,
-                                                    start=start,
-                                                    duration=duration,
-                                                    num_requests=nreq,
-                                                    seed=seed)
-        if sampled_requests is not None:
-            for req_idx in range(len(w)):
-                w.requests[req_idx].data = sampled_requests[i][req_idx]
+        if distribution == "real":
+            assert sampled_requests is not None
+            ticks=[req[0] for req in sampled_requests[i]]
+            w=Workload(ticks,[Request(model_name, None, i, {}, None) for i in range(len(ticks))])
+            for idx in range(len(w)):
+                req= sampled_requests[i][idx]
+                w.requests[idx].data=(req[1],req[2],req[3])
+            workloads.append(w)
 
-        if prompt_lens is not None and output_lens is not None:
-            if isinstance(prompt_lens, int):
-                prompt_len = prompt_lens
-                output_len = output_lens
-            else:
-                prompt_len = prompt_lens[i]
-                output_len = output_lens[i]
-            print(f"Replace {model_name} workload with prompt {prompt_len} "
-                  f"output {output_len} distribution {prompt_distribution}")
-            w = replace_long_workloads(w,
-                                       tokenizer_path,
-                                       prompt_len,
-                                       output_len,
-                                       distribution=prompt_distribution)
-        workloads.append(w)
-        seed += random.randint(1, 100)
+        # if distribution == "poisson":
+        #     process = PoissonProcess
+        # elif distribution == "uniform":
+        #     process = DeterministicProcess
+        # else:
+        #     raise ValueError(f"Unknown arrival process: {distribution}")
+        # w = process(arrival_rate).generate_workload(model_name,
+        #                                             start=start,
+        #                                             duration=duration,
+        #                                             num_requests=nreq,
+        #                                             seed=seed)
+        # if sampled_requests is not None:
+        #     for req_idx in range(len(w)):
+        #         w.requests[req_idx].data = sampled_requests[i][req_idx]
+
+        # if prompt_lens is not None and output_lens is not None:
+        #     if isinstance(prompt_lens, int):
+        #         prompt_len = prompt_lens
+        #         output_len = output_lens
+        #     else:
+        #         prompt_len = prompt_lens[i]
+        #         output_len = output_lens[i]
+        #     print(f"Replace {model_name} workload with prompt {prompt_len} "
+        #           f"output {output_len} distribution {prompt_distribution}")
+        #     w = replace_long_workloads(w,
+        #                                tokenizer_path,
+        #                                prompt_len,
+        #                                output_len,
+        #                                distribution=prompt_distribution)
+        # workloads.append(w)
+        # seed += random.randint(1, 100)
 
     workload = Workload.merge(*workloads)
 
@@ -755,7 +783,7 @@ if __name__ == "__main__":
     start = 0
     # limit the maximum arrival duration to 1000 seconds
     duration = 1000
-    distribution = "poisson"
+    distribution = "real"
     use_share_gpt = False  #True
     if use_share_gpt:
         prompt_distribution = None
@@ -801,6 +829,7 @@ if __name__ == "__main__":
                           num_requests=num_requests_dist,
                           start=start,
                           duration=duration,
+                          sampled_requests=sampled_requests,
                           distribution=distribution,
                           prompt_distribution=prompt_distribution,
                           use_share_gpt=use_share_gpt,

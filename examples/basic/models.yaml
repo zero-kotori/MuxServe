@@ -1,13 +1,13 @@
 cluster:
   nnodes: 1
-  ngpus_per_node: 4
+  ngpus_per_node: 2
 models:
 - name: llm-0
-  model: /mnt/afs/share/LLMCKPTs/huggyllama/llama-7b
-  rate: 12
+  model: /users/cm/.cache/modelscope/hub/models/LLM-Research/llama-7b
+  dataset_source: /users/cm/AzureLLMInferenceTrace_code_1week.csv
 - name: llm-1
-  model: /mnt/afs/share/LLMCKPTs/huggyllama/llama-13b
-  rate: 5
-- name: llm-2
-  model: /mnt/afs/share/LLMCKPTs/huggyllama/llama-30b
-  rate: 3
+  model: /users/cm/.cache/modelscope/hub/models/LLM-Research/llama-7b
+  dataset_source: /users/cm/AzureLLMInferenceTrace_conv_1week.csv
+# - name: llm-2
+#   model: /users/cm/.cache/modelscope/hub/models/LLM-Research/llama-7b
+#   rate: 3

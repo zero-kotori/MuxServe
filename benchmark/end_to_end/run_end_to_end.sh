@@ -20,7 +20,7 @@ YAML="$3"
 workload_file="$4"
 split_llm="$5"
 # YOUR_PASSWD="fill_your_passwd_here"
-YOUR_PASSWD=$YOUR_PASSWD
+YOUR_PASSWD="default"
 
 end_to_end_log_dir="$workdir/benchmark/end_to_end/log"
 
@@ -107,7 +107,7 @@ elif [ $launch_type = "muxserve" ]; then
         --nproc_per_node=${NPROC_PER_NODE} \
         --server-port $flex_server_port --flexstore-port $flex_store_port \
         --mps-dir ${mps_log_dir} \
-        --max-num-batched-tokens 2048 \
+        --max-num-batched-tokens 4096 \
         --schedule-approach adbs \
         2>&1 | tee $muxserve_log && \
     kill -9 $(pgrep -f $flex_store_port) && \
