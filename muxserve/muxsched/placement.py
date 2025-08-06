@@ -5,12 +5,11 @@ import json
 import math
 import yaml
 import itertools
-import cvxpy as cp
 import numpy as np
 from typing import Dict, List, Optional
 from transformers import AutoConfig
 
-MEMORY_PER_GPU = 80  # GB
+MEMORY_PER_GPU = 40  # GB
 
 
 class YamlBuilder:
@@ -67,8 +66,8 @@ class YamlBuilder:
         model_size = int(model.split("-")[-1][:-1]) * 2
         self.model_sizes.append(model_size)
         self.data["gpu_memory_utilization"] = (
-            80 - sum(self.model_sizes) / ngpus -
-            0.8 * len(self.model_sizes) * 2 - 6 * len(self.model_sizes)) / 80
+            40 - sum(self.model_sizes) / ngpus -
+            0.8 * len(self.model_sizes) * 2 - 6 * len(self.model_sizes)) / 40
 
     def build(self):
         return self.data

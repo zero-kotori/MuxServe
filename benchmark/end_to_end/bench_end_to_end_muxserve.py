@@ -9,8 +9,8 @@ END_TO_END_DIR = os.path.dirname(__file__)
 PROJ_DIR = f"{os.path.dirname(__file__)}/../.."
 
 MODEL_TO_PATH = {
-    "llama-7b": "/users/cm/.cache/modelscope/llama-7b",
-    "llama-13b": "/users/cm/.cache/modelscope/hub/models/ydyajyA/llama-13b",
+    "llama-7b": "/home/bingxing2/home/scx7781/model/llama-7b",
+    "llama-13b": "/home/bingxing2/home/scx7781/model/llama-13b",
 }
 # path to `ShareGPT_V3_unfiltered_cleaned_split.json`
 # SHAREGPT_PATH = "/users/cm/AzureLLMInferenceTrace_conv_1week.csv"
@@ -260,17 +260,17 @@ def assign_rates(real_rates: list[float],
 
 
 def gen_config_with_power_law(config_dir: str, workloads_dir: str):
-    num_models = 16  # 12 x 7B; 4 x 13B; 2 x 30B; 1 x 65B
+    num_models = 5  # 12 x 7B; 4 x 13B; 2 x 30B; 1 x 65B
     alpha_lis = [0.7]
     max_rate_lis = [40]
     rate_scale_lis = [0.5] # 20, 30, 40, 50
     model2num = {
-        "llama-7b": 12,
-        "llama-13b": 4,
+        "llama-7b": 4,
+        "llama-13b": 1,
     }
-    nnodes = 4
+    nnodes =1 
     ngpus_per_node = 8
-    tmp_cfg = "/users/cm/tmp/tmp_model_cfg.yaml"
+    tmp_cfg =f"{PROJ_DIR}/tmp/tmp_model_cfg.yaml"
 
     if not os.path.exists(config_dir):
         os.makedirs(config_dir, exist_ok=True)
@@ -303,28 +303,27 @@ def gen_config_with_power_law(config_dir: str, workloads_dir: str):
                 gen_spatial_cfg_from_muxserve_cfg(cfg_dir)
                 gen_temporal_cfg_from_muxserve_cfg(cfg_dir)
 
-                workloads_dump_dir = f"{workloads_dir}/alpha{alpha}_scale{rate_scale}_max{max_rate}"
-                if not os.path.exists(workloads_dump_dir):
-                    os.makedirs(workloads_dump_dir, exist_ok=True)
-
-                workload_args = {
-                    "start": 0,
-                    "duration": 1000,
-                    "distribution": "poisson",
-                    "prompt_distribution": None,
-                    "use_share_gpt": True,
-                    "prompt_len": None,
-                    "output_len": None,
-                    "dataset": SHAREGPT_PATH,
-                }
-                get_workload_from_optimized_placement(
-                    muxserve_placement,
-                    time=240,
-                    models_yaml=tmp_cfg,
-                    dump_dir=workloads_dump_dir,
-                    **workload_args)
-
-                flog.write(f"{cfg_dir}\n{json.dumps(muxserve_placement)}\n")
+#                workloads_dump_dir = f"{workloads_dir}/alpha{alpha}_scale{rate_scale}_max{max_rate}"
+#                if not os.path.exists(workloads_dump_dir):
+#                    os.makedirs(workloads_dump_dir, exist_ok=True)
+#
+#                workload_args = {
+#                    "start": 0,
+#                    "duration": 1000,
+#                    "distribution": "poisson",
+#                    "prompt_distribution": None,
+#                    "use_share_gpt": True,
+#                    "prompt_len": None,
+#                    "output_len": None,
+#                    "dataset": SHAREGPT_PATH,
+#                }
+#                get_workload_from_optimized_placement(
+#                    muxserve_placement,
+#                    time=240,
+#                    models_yaml=tmp_cfg,
+#                    dump_dir=workloads_dump_dir,
+#                    **workload_args)
+#                flog.write(f"{cfg_dir}\n{json.dumps(muxserve_placement)}\n")
 
     flog.close()
 

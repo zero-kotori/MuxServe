@@ -9,6 +9,7 @@ import json
 import dataclasses
 from typing import Any, Dict, Optional
 import random
+import pickle
 
 
 eps = 1e-6
@@ -114,6 +115,90 @@ def generate_workload(workload_infos: List[Tuple[float, List[int], int, int]],
     with open(output_file, "w") as f:
         json.dump(workload_json, f)
 
+def get_muxserve_placement(model_yaml:str,
+                           alpha: float,
+                           output_file: str,
+                           request_time:int,
+                           request_per_second: float) -> None:
+    """
+    Get the muxserve placement from the model YAML file.
+    """
+    num_requests = int(request_time* request_per_second)
+    workload_info=get_workloads_info_from_yaml(model_yaml,alpha)
+    print(f"get workload info: {workload_info}")
+
+    sampled_requests = []
+    for idx,(model_id,alpha_rate, dataset_source) in enumerate(workload_info):
+
+        with open(dataset_source, "r") as f:
+            csv_reader = csv.DictReader(f)  
+            requests = [row for row in csv_reader if datetime.fromisoformat(row["TIMESTAMP"]).day>=16]
+
+        filtered_requests =[]
+        base_time=datetime.fromisoformat(requests[0]["TIMESTAMP"])
+        for req in requests:
+            timestamp = datetime.fromisoformat(req["TIMESTAMP"])
+            if (timestamp - base_time).total_seconds() > request_time:  
+                break
+            arrival_time = (timestamp - base_time).total_seconds()
+            inputlen=min(1024,int(req["ContextTokens"]))
+            outputlen=max(3,int(req["GeneratedTokens"]))
+            prompt = np.ones(inputlen, dtype=int).tolist()
+            filtered_requests.append((arrival_time,prompt,inputlen,outputlen))
+
+        model_seed = 42+idx  # Ensure a consistent seed for each model
+        rand_inst = random.Random(model_seed)
+        num_sample = int(num_requests * alpha_rate)
+        sampled = rand_inst.sample(filtered_requests, num_sample)
+
+        sampled_requests.append(sampled)
+
+    generate_workload(workload_infos=workload_info,
+                        output_file=output_file,
+                        sampled_requests=sampled_requests)
+    
+def get_prewarm_placement(model_yaml: str,
+                           alpha: float,
+                           output_file: str,
+                           request_time: int,
+                           request_per_second: float) -> None:
+    """
+    Get the prewarm placement from the model YAML file.
+    """
+    num_requests = int(request_time* request_per_second)
+    workload_info = get_workloads_info_from_yaml(model_yaml, alpha)
+    sampled_requests = []
+    for idx,(model_id,alpha_rate, dataset_source) in enumerate(workload_info):
+
+        with open(dataset_source, "r") as f:
+            csv_reader = csv.DictReader(f)  
+            requests = [row for row in csv_reader if datetime.fromisoformat(row["TIMESTAMP"]).day>=16]
+
+        filtered_requests =[]
+        base_time=datetime.fromisoformat(requests[0]["TIMESTAMP"])
+        for req in requests:
+            timestamp = datetime.fromisoformat(req["TIMESTAMP"])
+            if (timestamp - base_time).total_seconds() > request_time:  
+                break
+            arrival_time = (timestamp - base_time).total_seconds()
+            inputlen=min(1024,int(req["ContextTokens"]))
+            outputlen=max(3,int(req["GeneratedTokens"]))
+            filtered_requests.append((arrival_time,model_id,inputlen,outputlen))
+
+        model_seed = 42+idx  # Ensure a consistent seed for each model
+        rand_inst = random.Random(model_seed)
+        num_sample = int(num_requests * alpha_rate)
+        print(num_sample)
+        sampled = rand_inst.sample(filtered_requests, num_sample)
+
+        sampled_requests.append(sampled)
+    
+    all_requests = sum(sampled_requests, []) 
+    all_requests_sorted = sorted(all_requests, key=lambda x: x[0])
+    print(f"Total requests: {len(all_requests_sorted)}")
+    with open(output_file, "wb") as f:
+        pickle.dump(all_requests_sorted, f)
+
 
 if __name__ == "__main__":
     random.seed(42)  # For reproducibility
@@ -126,83 +211,19 @@ if __name__ == "__main__":
     parser.add_argument("--alpha", type=float, default=0.5, help="Alpha value for the workload generation")
     args = parser.parse_args()
 
-    request_time=3600
+    request_time=600
     trace_type = args.trace_type
     output_file = args.output_file
     model_yaml = args.model_yaml
     alpha = args.alpha
     request_per_second = args.request_per_second
-    num_requests = int(request_time* request_per_second)
 
 
     if trace_type == "muxserve":  
-
-        workload_info=get_workloads_info_from_yaml(model_yaml,alpha)
-        print(f"get workload info: {workload_info}")
-
-        sampled_requests = []
-        for idx,(model_id,alpha_rate, dataset_source) in enumerate(workload_info):
-
-            with open(dataset_source, "r") as f:
-                csv_reader = csv.DictReader(f)  
-                requests = [row for row in csv_reader]
-
-            filtered_requests =[]
-            base_time=datetime.fromisoformat(requests[0]["TIMESTAMP"])
-            for req in requests:
-                timestamp = datetime.fromisoformat(req["TIMESTAMP"])
-                if (timestamp - base_time).total_seconds() > request_time:  
-                    break
-                arrival_time = (timestamp - base_time).total_seconds()
-                inputlen=min(1024,int(req["ContextTokens"]))
-                outputlen=max(3,int(req["GeneratedTokens"]))
-                prompt = np.ones(inputlen, dtype=int).tolist()
-                filtered_requests.append((arrival_time,prompt,inputlen,outputlen))
-
-            model_seed = 42+idx  # Ensure a consistent seed for each model
-            rand_inst = random.Random(model_seed)
-            num_sample = int(num_requests * alpha_rate)
-            sampled = rand_inst.sample(filtered_requests, num_sample)
-
-            sampled_requests.append(sampled)
-
-        generate_workload(workload_infos=workload_info,
-                            output_file=output_file,
-                            sampled_requests=sampled_requests)
+        get_muxserve_placement(model_yaml, alpha, output_file, request_time, request_per_second)
         
     elif trace_type == "prewarm":
-        workload_info = get_workloads_info_from_yaml(model_yaml, alpha)
-        sampled_requests = []
-        for idx,(model_id,alpha_rate, dataset_source) in enumerate(workload_info):
-
-            with open(dataset_source, "r") as f:
-                csv_reader = csv.DictReader(f)  
-                requests = [row for row in csv_reader]
-
-            filtered_requests =[]
-            base_time=datetime.fromisoformat(requests[0]["TIMESTAMP"])
-            for req in requests:
-                timestamp = datetime.fromisoformat(req["TIMESTAMP"])
-                if (timestamp - base_time).total_seconds() > request_time:  
-                    break
-                arrival_time = (timestamp - base_time).total_seconds()
-                inputlen=min(1024,int(req["ContextTokens"]))
-                outputlen=max(3,int(req["GeneratedTokens"]))
-                filtered_requests.append((arrival_time,model_id,inputlen,outputlen))
-
-            model_seed = 42+idx  # Ensure a consistent seed for each model
-            rand_inst = random.Random(model_seed)
-            num_sample = int(num_requests * alpha_rate)
-            print(num_sample)
-            sampled = rand_inst.sample(filtered_requests, num_sample)
-
-            sampled_requests.append(sampled)
-        
-        all_requests = sum(sampled_requests, []) 
-        all_requests_sorted = sorted(all_requests, key=lambda x: x[0])
-        print(f"Total requests: {len(all_requests_sorted)}")
-        with open(output_file, "w") as f:
-            json.dump(all_requests_sorted, f)
+        get_prewarm_placement(model_yaml, alpha, output_file, request_time, request_per_second)
 
     else:
         raise ValueError(f"Unknown trace type: {trace_type}.")
@@ -210,5 +231,6 @@ if __name__ == "__main__":
 
 
         
+
 
 

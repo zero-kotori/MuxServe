@@ -1,13 +1,22 @@
 cluster:
   nnodes: 1
-  ngpus_per_node: 2
+  ngpus_per_node: 8
 models:
 - name: llm-0
-  model: /users/cm/.cache/modelscope/hub/models/LLM-Research/llama-7b
-  dataset_source: /users/cm/AzureLLMInferenceTrace_code_1week.csv
+  model: /home/bingxing2/home/scx7781/model/llama-7b
+  dataset_source: /home/bingxing2/home/scx7781/dataset/AzureLLMInferenceTrace_code_1week.csv
 - name: llm-1
-  model: /users/cm/.cache/modelscope/hub/models/LLM-Research/llama-7b
-  dataset_source: /users/cm/AzureLLMInferenceTrace_conv_1week.csv
+  model: /home/bingxing2/home/scx7781/model/llama-7b
+  dataset_source: /home/bingxing2/home/scx7781/dataset/AzureLLMInferenceTrace_code_1week.csv
+- name: llm-2
+  model: /home/bingxing2/home/scx7781/model/llama-7b
+  dataset_source: /home/bingxing2/home/scx7781/dataset/AzureLLMInferenceTrace_conv_1week.csv
+- name: llm-3
+  model: /home/bingxing2/home/scx7781/model/llama-7b
+  dataset_source: /home/bingxing2/home/scx7781/dataset/AzureLLMInferenceTrace_conv_1week.csv
+- name: llm-4
+  model: /home/bingxing2/home/scx7781/model/llama-13b
+  dataset_source: /home/bingxing2/home/scx7781/dataset/AzureLLMInferenceTrace_conv_1week.csv
 # - name: llm-2
 #   model: /users/cm/.cache/modelscope/hub/models/LLM-Research/llama-7b
 #   rate: 3

@@ -1122,10 +1122,10 @@ class MuxScheduler:
                                    last_sched_time, last_warn_time)
             status, prefill_in_exec, last_sched_time, last_warn_time = ret
 
-            # if self.get_tick() - last_sched_time > 60 * 4:
-            #     logger.info("Scheduler Timeout Error, Exit!")
-            #     self.is_finished = True
-            #     break
+            if self.get_tick() - last_sched_time > 60 * 4:
+                logger.info("Scheduler Timeout Error, Exit!")
+                self.is_finished = True
+                break
 
             if need_adapt and self.get_tick(
             ) - last_adapt_time > adapt_interval:
