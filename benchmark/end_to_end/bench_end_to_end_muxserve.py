@@ -9,8 +9,9 @@ END_TO_END_DIR = os.path.dirname(__file__)
 PROJ_DIR = f"{os.path.dirname(__file__)}/../.."
 
 MODEL_TO_PATH = {
-    "llama-7b": "/home/bingxing2/home/scx7781/model/llama-7b",
-    "llama-13b": "/home/bingxing2/home/scx7781/model/llama-13b",
+    "llama-7b": "/data/home/scyb328/models/llama-7b",
+    "llama-13b": "/data/home/scyb328/models/llama-13b",
+    "llama-70b": "/data/home/scyb328/models/llama-70b",
 }
 # path to `ShareGPT_V3_unfiltered_cleaned_split.json`
 # SHAREGPT_PATH = "/users/cm/AzureLLMInferenceTrace_conv_1week.csv"
@@ -260,13 +261,13 @@ def assign_rates(real_rates: list[float],
 
 
 def gen_config_with_power_law(config_dir: str, workloads_dir: str):
-    num_models = 5  # 12 x 7B; 4 x 13B; 2 x 30B; 1 x 65B
-    alpha_lis = [0.7]
+    num_models = 2  # 12 x 7B; 4 x 13B; 2 x 30B; 1 x 65B
+    alpha_lis = [0.5]
     max_rate_lis = [40]
     rate_scale_lis = [0.5] # 20, 30, 40, 50
     model2num = {
-        "llama-7b": 4,
         "llama-13b": 1,
+        "llama-70b": 1,
     }
     nnodes =1 
     ngpus_per_node = 8
@@ -300,8 +301,8 @@ def gen_config_with_power_law(config_dir: str, workloads_dir: str):
                                                     dump_dir=cfg_dir,
                                                     verbose=False)
 
-                gen_spatial_cfg_from_muxserve_cfg(cfg_dir)
-                gen_temporal_cfg_from_muxserve_cfg(cfg_dir)
+#                gen_spatial_cfg_from_muxserve_cfg(cfg_dir)
+#                gen_temporal_cfg_from_muxserve_cfg(cfg_dir)
 
 #                workloads_dump_dir = f"{workloads_dir}/alpha{alpha}_scale{rate_scale}_max{max_rate}"
 #                if not os.path.exists(workloads_dump_dir):

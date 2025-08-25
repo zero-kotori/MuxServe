@@ -1,27 +1,45 @@
-num_gpus: 2
-max_num_seqs: 256
+num_gpus: 4
+max_num_seqs: 1
 overload_threshold: 3
 gpu_memory_utilization: 0.1
 
 models:
   -
-    name: llm-0
-    model: /home/bingxing2/home/scx7781/model/llama-7b
-    tensor_parallel_size: 2
+    name: /data/home/scyb328/models/llama-7b
+    model: /data/home/scyb328/models/llama-7b
+    tensor_parallel_size: 4
     pipeline_parallel_size: 1
     placement:
-      - [0, 1]
-    mps_percentage: [70, 30]
+      - [0,1,2,3]
+    mps_percentage: [100,90]
     model_dtype: fp16
   -
-    name: llm-1
-    model: /home/bingxing2/home/scx7781/model/llama-7b
-    tensor_parallel_size: 2
+    name: /data/home/scyb328/models/llama-13b
+    model: /data/home/scyb328/models/llama-13b
+    tensor_parallel_size: 4   
     pipeline_parallel_size: 1
     placement:
-      - [0, 1]
-    mps_percentage: [70, 30]
-    model_dtype: fp16 
+      - [0,1,2,3]
+    mps_percentage: [100, 90]
+    model_dtype: fp16
+  -
+    name: /data/home/scyb328/models/llama-70b
+    model: /data/home/scyb328/models/llama-70b
+    tensor_parallel_size: 4   
+    pipeline_parallel_size: 1
+    placement:
+      - [0, 1,2,3]
+    mps_percentage: [100, 90]
+    model_dtype: fp16
+      #-
+      #  name: llm-1
+      #  model: /data/home/scyb328/models/llama-7b
+      #  tensor_parallel_size: 2
+      #  pipeline_parallel_size: 1
+      #  placement:
+      #    - [0, 1]
+      #  mps_percentage: [70, 30]
+      #  model_dtype: fp16 
   # -
   #   name: llm-2
   #   model: /users/cm/.cache/modelscope/hub/models/LLM-Research/llama-7b

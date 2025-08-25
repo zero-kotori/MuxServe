@@ -1,0 +1,31 @@
+gpu_memory_utilization: 0.27
+max_num_seqs: 256
+models:
+- max_num_seqs: 114
+  model: /data/home/scyb328/models/llama-7b
+  model_dtype: fp16
+  mps_percentage:
+  - 100
+  - 90
+  name: llm-2
+  pipeline_parallel_size: 1
+  placement:
+  - - 0
+    - 1
+  tensor_parallel_size: 2
+- max_num_seqs: 110
+  model: /data/home/scyb328/models/llama-7b
+  model_dtype: fp16
+  mps_percentage:
+  - 100
+  - 90
+  name: llm-3
+  pipeline_parallel_size: 1
+  placement:
+  - - 0
+    - 1
+  tensor_parallel_size: 2
+num_gpus: 2
+overload_threshold: 2
+workloads:
+  workload_file:

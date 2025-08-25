@@ -80,8 +80,9 @@ def get_workloads_info_from_yaml(models_yaml: str,alpha: float) -> List[Tuple[st
 
     model_id = [model["name"] for model in models]
     dataset_source=[model["dataset_source"] for model in models]
-    arr=np.random.exponential(1/alpha,len(model_id))
-    arr = arr / arr.sum()
+    arr=[(x+1)**(-alpha) for x in range(len(model_id))]  # Power law distribution
+    arr_sum = sum(arr)
+    arr=[x / arr_sum for x in arr]  
 
     return [(id,alpha_rate, data) for id,alpha_rate, data in zip(model_id, arr,dataset_source)]
 
@@ -211,7 +212,7 @@ if __name__ == "__main__":
     parser.add_argument("--alpha", type=float, default=0.5, help="Alpha value for the workload generation")
     args = parser.parse_args()
 
-    request_time=600
+    request_time=1200
     trace_type = args.trace_type
     output_file = args.output_file
     model_yaml = args.model_yaml

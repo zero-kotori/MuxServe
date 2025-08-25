@@ -1,0 +1,21 @@
+num_gpus: 4
+max_num_seqs: 256
+overload_threshold: 2
+gpu_memory_utilization: 0.8237500000000001
+models:
+- name: llm-0
+  model: /data/home/scyb328/models/llama-13b
+  tensor_parallel_size: 4
+  pipeline_parallel_size: 1
+  placement:
+  - - 0
+    - 1
+    - 2
+    - 3
+  mps_percentage:
+  - 90
+  - 90
+  max_num_seqs: 233
+  model_dtype: fp16
+workloads:
+  workload_file:

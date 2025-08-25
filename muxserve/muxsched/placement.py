@@ -9,7 +9,7 @@ import numpy as np
 from typing import Dict, List, Optional
 from transformers import AutoConfig
 
-MEMORY_PER_GPU = 40  # GB
+MEMORY_PER_GPU = 80  # GB
 
 
 class YamlBuilder:
@@ -66,8 +66,8 @@ class YamlBuilder:
         model_size = int(model.split("-")[-1][:-1]) * 2
         self.model_sizes.append(model_size)
         self.data["gpu_memory_utilization"] = (
-            40 - sum(self.model_sizes) / ngpus -
-            0.8 * len(self.model_sizes) * 2 - 6 * len(self.model_sizes)) / 40
+            80 - sum(self.model_sizes) / ngpus -
+            0.8 * len(self.model_sizes) * 2 - 6 * len(self.model_sizes)) / 80
 
     def build(self):
         return self.data
@@ -934,7 +934,7 @@ class PlacementOptimizer:
                     "llama-7b": 80,
                     "llama-13b": 90,
                     "llama-30b": 100,
-                    "llama-65b": 100,
+                    "llama-70b": 100,
                 }
 
                 yaml_builder.add_model(

@@ -61,7 +61,6 @@ class MuxServeArgs:
         parser.add_argument('--block-size',
                             type=int,
                             default=MuxServeArgs.block_size,
-                            choices=[8, 16, 32],
                             help='token block size')
         parser.add_argument('--gpu-memory-utilization',
                             type=float,

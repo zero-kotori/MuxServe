@@ -1,0 +1,7 @@
+luster:
+  nnodes: 1
+  ngpus_per_node: 8
+models:
+- name: llm-0
+  model: /data/home/scyb328/models/llam-13b
+  dataset_source: /data/home/scyb328/dataset/AzureLLMInferenceTrace_code_1week.csv
