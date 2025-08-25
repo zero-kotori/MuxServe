@@ -182,19 +182,19 @@ class LLMRuntime(LLMEngine):
         # List of (timestamp, num_tokens)
         self.num_generation_tokens: List[Tuple[float, int]] = []
 
-#        # warmup engine
-#        if self.tcp_client is not None and self.stage_id == 0 and self.tp_rank == 0:
-#            while True:
-#                self.tcp_client.send_pyobj(["start_warmup", None])
-#                status = self.tcp_client.recv_pyobj()
-#                if status:
-#                    break
-#                time.sleep(3)
-#
-#        logger.info("Warmup engine...")
-#        self.unique_id = Counter(int(os.environ["MASTER_PORT"]) * 100)
-#        for _ in range(5):
-#            self.warmup()
+        # warmup engine
+        if self.tcp_client is not None and self.stage_id == 0 and self.tp_rank == 0:
+            while True:
+                self.tcp_client.send_pyobj(["start_warmup", None])
+                status = self.tcp_client.recv_pyobj()
+                if status:
+                    break
+                time.sleep(3)
+
+        logger.info("Warmup engine...")
+        self.unique_id = Counter(int(os.environ["MASTER_PORT"]) * 100)
+        for _ in range(5):
+            self.warmup()
         torch.cuda.empty_cache()
         torch.cuda.synchronize()
 
@@ -259,7 +259,7 @@ class LLMRuntime(LLMEngine):
         else:
             (input_tensor, input_positions, input_metadata,
              batch_reqs) = self.recv()
-        print(input_metadata)
+        # print(input_metadata)
         output_tensor = self._run_workers("pure_forward",
                                           get_all_outputs=False,
                                           input_tensor=input_tensor,
@@ -592,7 +592,7 @@ class LLMRuntime(LLMEngine):
         max_tokens = 5
         batch_request_ids, batch_output_tokens = [], []
         if self.stage_id == 0 and self.tp_rank == 0:
-            for i in range(16):
+            for i in range(4):
                 req_id = next(self.unique_id)
                 batch_request_ids.append(req_id)
                 self.batch_scheduler.add_request(prompt_tokens, req_id,

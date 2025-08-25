@@ -155,11 +155,25 @@ class LlamaAttention(nn.Module):
         cache_event: Optional[torch.cuda.Event],
     ) -> torch.Tensor:
         qkv, _ = self.qkv_proj(hidden_states)
+        # print(f"Start Attention!")
         q, k, v = qkv.split([self.q_size, self.kv_size, self.kv_size], dim=-1)
         k_cache, v_cache = kv_cache
+        # k_cache_cpu = k_cache.flatten()[-10:].cpu()
+        # v_cache_cpu = v_cache.flatten()[-10:].cpu()
+        # print(k_cache_cpu)
+        # print(v_cache_cpu)
+        # q_cpu = q.cpu()
+        # k_cpu = k.cpu()
+        # v_cpu = v.cpu()
+        # print(f"positions = {positions}")
+        # print(f"shape = {q_cpu.shape}, {k_cpu.shape}, {v_cpu.shape}, {k_cache.shape}, {v_cache.shape}")
+        # print(f"input_metadata = {input_metadata}")
         attn_output = self.attn(positions, q, k, v, k_cache, v_cache,
                                 input_metadata, cache_event)
+        # attn_output_cpu = attn_output.cpu()
+        # print(attn_output_cpu)
         output, _ = self.o_proj(attn_output)
+        # print(f"End Attention!")
         return output
 
 
@@ -332,7 +346,6 @@ class LlamaForCausalLM(nn.Module):
         hidden_states = self.model(input_ids, positions, kv_caches,
                                    input_metadata, cache_events)
         if self.post_process:
-            torch.cuda.synchronize()
             next_tokens = self.sampler(self.lm_head.weight, hidden_states,
                                        input_metadata)
             return next_tokens

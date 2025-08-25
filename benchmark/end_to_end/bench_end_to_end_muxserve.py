@@ -142,7 +142,7 @@ def gen_spatial_cfg_from_muxserve_cfg(read_dir: str):
         "llama-7b": [0],
         "llama-13b": [0],
         "llama-30b": [0,1,2,3],
-        "llama-65b": [0,1,2,3,4,5,6,7],
+        "llama-70b": [0,1,2,3,4,5,6,7],
     }
 
     models: list[dict] = []
@@ -261,15 +261,16 @@ def assign_rates(real_rates: list[float],
 
 
 def gen_config_with_power_law(config_dir: str, workloads_dir: str):
-    num_models = 2  # 12 x 7B; 4 x 13B; 2 x 30B; 1 x 65B
-    alpha_lis = [0.5]
-    max_rate_lis = [40]
-    rate_scale_lis = [0.5] # 20, 30, 40, 50
+    num_models = 4
+    alpha_lis = [float(os.getenv("ALPHA", "0.5"))]
+    max_rate_lis = [int(os.getenv("RPS", "25"))]
+    rate_scale_lis = [1] # 20, 30, 40, 50
     model2num = {
+        "llama-7b": 2,
         "llama-13b": 1,
         "llama-70b": 1,
     }
-    nnodes =1 
+    nnodes =2
     ngpus_per_node = 8
     tmp_cfg =f"{PROJ_DIR}/tmp/tmp_model_cfg.yaml"
 
@@ -300,31 +301,30 @@ def gen_config_with_power_law(config_dir: str, workloads_dir: str):
                                                     dump_to_yaml=True,
                                                     dump_dir=cfg_dir,
                                                     verbose=False)
+                gen_spatial_cfg_from_muxserve_cfg(cfg_dir)
+                gen_temporal_cfg_from_muxserve_cfg(cfg_dir)
 
-#                gen_spatial_cfg_from_muxserve_cfg(cfg_dir)
-#                gen_temporal_cfg_from_muxserve_cfg(cfg_dir)
+                # workloads_dump_dir = f"{workloads_dir}/alpha{alpha}_scale{rate_scale}_max{max_rate}"
+                # if not os.path.exists(workloads_dump_dir):
+                #     os.makedirs(workloads_dump_dir, exist_ok=True)
 
-#                workloads_dump_dir = f"{workloads_dir}/alpha{alpha}_scale{rate_scale}_max{max_rate}"
-#                if not os.path.exists(workloads_dump_dir):
-#                    os.makedirs(workloads_dump_dir, exist_ok=True)
-#
-#                workload_args = {
-#                    "start": 0,
-#                    "duration": 1000,
-#                    "distribution": "poisson",
-#                    "prompt_distribution": None,
-#                    "use_share_gpt": True,
-#                    "prompt_len": None,
-#                    "output_len": None,
-#                    "dataset": SHAREGPT_PATH,
-#                }
-#                get_workload_from_optimized_placement(
-#                    muxserve_placement,
-#                    time=240,
-#                    models_yaml=tmp_cfg,
-#                    dump_dir=workloads_dump_dir,
-#                    **workload_args)
-#                flog.write(f"{cfg_dir}\n{json.dumps(muxserve_placement)}\n")
+                # workload_args = {
+                #     "start": 0,
+                #     "duration": 1000,
+                #     "distribution": "poisson",
+                #     "prompt_distribution": None,
+                #     "use_share_gpt": True,
+                #     "prompt_len": None,
+                #     "output_len": None,
+                #     "dataset": SHAREGPT_PATH,
+                # }
+                # get_workload_from_optimized_placement(
+                #     muxserve_placement,
+                #     time=240,
+                #     models_yaml=tmp_cfg,
+                #     dump_dir=workloads_dump_dir,
+                #     **workload_args)
+                # flog.write(f"{cfg_dir}\n{json.dumps(muxserve_placement)}\n")
 
     flog.close()
 

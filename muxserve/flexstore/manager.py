@@ -402,7 +402,8 @@ class FlexStoreManager:
             model_name = job_config.name
             model_config = AutoConfig.from_pretrained(job_config.model)
             tensor_parallel_size = job_config.tensor_parallel_size
-            num_heads = model_config.num_attention_heads // tensor_parallel_size
+            # num_heads = model_config.num_attention_heads // tensor_parallel_size
+            num_heads = model_config.num_key_value_heads // tensor_parallel_size
             pipeline_partition = PipeWorker.pipeline_split(
                 model_config.num_hidden_layers,
                 job_config.pipeline_parallel_size)
@@ -521,7 +522,8 @@ class FlexStoreManager:
         for job_config in job_configs:
             model_config = AutoConfig.from_pretrained(job_config.model)
             tensor_parallel_size = job_config.tensor_parallel_size
-            num_heads = model_config.num_attention_heads // tensor_parallel_size
+            # num_heads = model_config.num_attention_heads // tensor_parallel_size
+            num_heads = model_config.num_key_value_heads // tensor_parallel_size
             partition = PipeWorker.pipeline_split(
                 model_config.num_hidden_layers,
                 job_config.pipeline_parallel_size)
