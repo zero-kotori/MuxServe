@@ -158,6 +158,8 @@ class LLMRuntime(LLMEngine):
         self.num_layers = self.workers[0].num_hidden_layers
         self.num_heads = self.model_config.get_num_kv_heads(
             self.parallel_config)
+        self.num_attention_heads = self.model_config.hf_config.num_attention_heads
+        self.num_kv_heads = self.model_config.hf_config.num_key_value_heads
 
         # Profile the memory usage and initialize the cache.
         self._init_cache()
@@ -259,6 +261,19 @@ class LLMRuntime(LLMEngine):
         else:
             (input_tensor, input_positions, input_metadata,
              batch_reqs) = self.recv()
+        if self.num_kv_heads < self.num_attention_heads:
+            block_tables = input_metadata.block_tables
+            slot_mapping = input_metadata.slot_mapping
+            # print(f"slot_mapping = {slot_mapping.shape}")
+            # print(f"block_tables = {block_tables.shape}")
+            # print(f"num_attention_heads = {self.num_attention_heads}")
+            # print(f"num_heads = {self.num_heads}")
+            num_query_per_kv = self.num_attention_heads // self.num_kv_heads
+            block_tables = block_tables.repeat_interleave(num_query_per_kv, dim=2)
+            slot_mapping = slot_mapping.repeat_interleave(num_query_per_kv, dim=2)
+            input_metadata.block_tables = block_tables.contiguous()
+            input_metadata.slot_mapping = slot_mapping.contiguous()
+            # print(f"num_query_per_kv = {num_query_per_kv}. End interleave!")
         # print(input_metadata)
         output_tensor = self._run_workers("pure_forward",
                                           get_all_outputs=False,
@@ -315,6 +330,33 @@ class LLMRuntime(LLMEngine):
                                        input_tensor, input_positions,
                                        context_lens, block_tables,
                                        slot_mapping)
+
+        # if block_tables.numel() > 0:
+        #     mx_block_table_id = np.max(block_tables.flatten().cpu().numpy())
+        # else:
+        #     mx_block_table_id = 0
+        # if slot_mapping.numel() > 0:
+        #     mx_slot_mapping_id = np.max(slot_mapping.flatten().cpu().numpy())
+        # else:
+        #     mx_slot_mapping_id = 0
+
+        # if mx_block_table_id > 518272:
+        #     print("ERROR!!!")
+        #     print(f"Prepared mx_block_table_id = {mx_block_table_id}, mx_slot_mapping_id = {mx_slot_mapping_id}")
+        #     print(f"tot_block_needed = {total_blocks_needed}")
+        #     print(f"block_req = {batch_block_request}")
+        #     print(f"block_info = {block_info}")
+        #     print(f"max_num_blocks_per_seq = {max_num_blocks_per_seq}")
+        #     print(f"max_context_len = {max_context_len}")
+        #     print(f"block = {block_tables}")
+        #     block_tables = torch.zeros_like(block_tables)
+        # if mx_slot_mapping_id > 518272 * 32:
+        #     print("mx_slot_mapping_id ERROR!")
+        #     slot_mapping = torch.zeros_like(slot_mapping)
+
+        # NOTE(chiheng): set block_tables and slot_mapping to zero. otherwise, a CUDA illegal memory access will happen
+        block_tables = torch.zeros_like(block_tables)
+        slot_mapping = torch.zeros_like(slot_mapping)
 
         preempted_reqs = self.batch_scheduler.get_preempt_requests()
         batch_reqs = self.batch_scheduler.get_batch_reqs()
@@ -592,7 +634,7 @@ class LLMRuntime(LLMEngine):
         max_tokens = 5
         batch_request_ids, batch_output_tokens = [], []
         if self.stage_id == 0 and self.tp_rank == 0:
-            for i in range(4):
+            for i in range(16):
                 req_id = next(self.unique_id)
                 batch_request_ids.append(req_id)
                 self.batch_scheduler.add_request(prompt_tokens, req_id,

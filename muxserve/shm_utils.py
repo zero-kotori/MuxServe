@@ -76,8 +76,10 @@ def load_reqs_from_shared_var(shm_name: str) -> List[Union[Request, int]]:
     data = pickle.loads(serialized_data)
 
     shm.close()
-    shm.unlink()
-
+    try:
+        shm.unlink()  #TODO(fix): this will cause file not found error
+    except Exception as e:
+        print(f"Unlink shm meets exception {e}")
     return data
 
 
@@ -101,7 +103,10 @@ def load_from_shared_var(shm_name: str) -> List[int]:
         data = bytes(shm.buf[:]).decode('utf-8')
     data = [int(x) for x in data.split(",")]
     shm.close()
-    shm.unlink()
+    try:
+        shm.unlink()  #TODO(fix): this will cause file not found error
+    except Exception as e:
+        print(f"Unlink shm meets exception {e}")
     return data
 
 

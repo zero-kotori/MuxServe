@@ -331,14 +331,11 @@ class MuxScheduler:
         # only serve requests in the served models
         workload = workload.split_by_models(self._served_models)
 
-        #LCH: only serve first 20 minutes
-        mx_time_stamp = 20 * 60
-
         total_num_requests = 0
         for i in range(len(workload)):
             arrival_time = workload.arrivals[i]
             request = workload.requests[i]
-            if request.model_name not in self._served_models or arrival_time > mx_time_stamp:
+            if request.model_name not in self._served_models:
                 continue
             self._workload_queue.put_nowait((arrival_time, request))
             total_num_requests += 1

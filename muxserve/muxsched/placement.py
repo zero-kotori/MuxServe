@@ -67,7 +67,7 @@ class YamlBuilder:
         self.model_sizes.append(model_size)
         self.data["gpu_memory_utilization"] = (
             80 - sum(self.model_sizes) / ngpus -
-            0.8 * len(self.model_sizes) * 2 - 6 * len(self.model_sizes)) / 80
+            0.8 * len(self.model_sizes) * 2 - 10 * len(self.model_sizes)) / 80
 
     def build(self):
         return self.data

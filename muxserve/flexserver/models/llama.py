@@ -287,6 +287,10 @@ class LlamaModel(nn.Module):
             hidden_states = self.embed_tokens(input_ids)
         else:
             hidden_states = input_ids
+
+        # print(f"kv_caches shape = {kv_caches[0].shape}, {kv_caches[1].shape}")
+        # print(f"input_metadata = {input_metadata}")
+
         for i in range(len(self.layers)):
             if cache_events is None:
                 cache_event = None
@@ -300,6 +304,8 @@ class LlamaModel(nn.Module):
                 input_metadata,
                 cache_event,
             )
+            # print(f"End layer {i}")
+            # torch.cuda.synchronize()
         if self.post_process:
             hidden_states = self.norm(hidden_states)
         return hidden_states
